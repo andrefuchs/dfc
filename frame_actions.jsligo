@@ -36,7 +36,7 @@ const init_storage: storage = {
 
 
 const verifyFrameId = ([id, store]: [nat, storage]): bool => {
-    return Map.mem({id: id, owner: Tezos.sender}, store.frames);
+    return Map.mem({id: id, owner: Tezos.get_sender()}, store.frames);
 }
 
 
@@ -51,7 +51,7 @@ const addFrame = ([store, frame] : [storage, string]) : storage => {
 
     const frame_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     };
 
     assert_with_error(verifyStringLength(frame), "ERROR: Frame length can not be greater than 200");
@@ -61,9 +61,9 @@ const addFrame = ([store, frame] : [storage, string]) : storage => {
 
     const new_frame: frame_record = {
         id: frame_id,
-        owner: Tezos.sender,
+        owner: Tezos.get_sender(),
         frame: frame,
-        time: Tezos.now,
+        time: Tezos.get_now(),
         draft: false
     };
  
@@ -71,12 +71,12 @@ const addFrame = ([store, frame] : [storage, string]) : storage => {
     const new_frames: frames = Map.add(frame_key, new_frame, store.frames);
 
     //update users data
-    const updated_users: users = match(Map.find_opt (Tezos.sender, store.users), {
+    const updated_users: users = match(Map.find_opt (Tezos.get_sender(), store.users), {
         Some: (user_set: set<nat>) => {
             const updated_user_set: set<nat> = Set.add(frame_id, user_set)
-            return Map.update(Tezos.sender, Some(updated_user_set), store.users)
+            return Map.update(Tezos.get_sender(), Some(updated_user_set), store.users)
         },
-        None: () => Map.add(Tezos.sender, Set.literal(list([frame_id])), store.users)
+        None: () => Map.add(Tezos.get_sender(), Set.literal(list([frame_id])), store.users)
     });
   
     const updated_store: storage = {
@@ -95,7 +95,7 @@ const toggleFrameStatus = ([store, frame_id] : [storage, nat]) : storage => {
 
     const search_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     };
 
     //return the frame that matches the id param
@@ -122,7 +122,7 @@ const updateFrame = ([store, update_params] : [storage, update_params]) : storag
 
     const search_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     };
 
     assert_with_error(verifyStringLength(new_frame_string), "ERROR: Frame length can not be greater than 200");
@@ -151,15 +151,15 @@ const deconsteFrame = ([store, frame_id] : [storage, nat]) : storage => {
 
     const search_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     }
 
     const new_frames: frames = Map.remove(search_key, store.frames);
 
-    const updated_users: users = match(Map.find_opt (Tezos.sender, store.users), {
+    const updated_users: users = match(Map.find_opt (Tezos.get_sender(), store.users), {
         Some: (user_set: set<nat>) => {
             const updated_user_set: set<nat> = Set.remove(frame_id, user_set)
-            return Map.update(Tezos.sender, Some(updated_user_set), store.users)
+            return Map.update(Tezos.get_sender(), Some(updated_user_set), store.users)
         },
         None: () => (failwith("ERROR: Something went wrong") as users)
     });
