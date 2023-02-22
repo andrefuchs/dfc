@@ -35,14 +35,14 @@ const init_storage: storage = {
 }
 
 
-const verifyFrameId = ([id, store]: [nat, storage]): bool => {
-    return Map.mem({id: id, owner: Tezos.sender}, store.frames);
+const verifyFrameId = ([key_, store]: [key_, storage]): bool => {
+    return Map.mem(key_, store.frames);
 }
 
 
-const verifyStringLength = (str_: string): bool => {
-  return String.length(str_) <= (200 as nat);
-}
+// const verifyStringLength = (str_: string): bool => {
+//  return String.length(str_) <= (200 as nat);
+// }
 
 const addFrame = ([store, frame] : [storage, string]) : storage => {
     
@@ -51,19 +51,19 @@ const addFrame = ([store, frame] : [storage, string]) : storage => {
 
     const frame_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     };
 
-    assert_with_error(verifyStringLength(frame), "ERROR: Frame length can not be greater than 200");
+    assert_with_error(String.length(frame) > (200 as nat), "ERROR: Frame length can not be greater than 200");
 
     //verify if the id already exist
-    assert_with_error(!verifyFrameId([frame_id, store]), "Frame id already exists");
+    assert_with_error(!verifyFrameId([frame_key, store]), "Frame id already exists");
 
     const new_frame: frame_record = {
         id: frame_id,
-        owner: Tezos.sender,
+        owner: Tezos.get_sender(),
         frame: frame,
-        time: Tezos.now,
+        time: Tezos.get_now(),
         draft: false
     };
  
@@ -71,12 +71,12 @@ const addFrame = ([store, frame] : [storage, string]) : storage => {
     const new_frames: frames = Map.add(frame_key, new_frame, store.frames);
 
     //update users data
-    const updated_users: users = match(Map.find_opt (Tezos.sender, store.users), {
+    const updated_users: users = match(Map.find_opt (Tezos.get_sender(), store.users), {
         Some: (user_set: set<nat>) => {
             const updated_user_set: set<nat> = Set.add(frame_id, user_set)
-            return Map.update(Tezos.sender, Some(updated_user_set), store.users)
+            return Map.update(Tezos.get_sender(), Some(updated_user_set), store.users)
         },
-        None: () => Map.add(Tezos.sender, Set.literal(list([frame_id])), store.users)
+        None: () => Map.add(Tezos.get_sender(), Set.literal(list([frame_id])), store.users)
     });
   
     const updated_store: storage = {
@@ -91,26 +91,23 @@ const addFrame = ([store, frame] : [storage, string]) : storage => {
 
 const toggleFrameStatus = ([store, frame_id] : [storage, nat]) : storage => {
     
-    assert_with_error(verifyFrameId([frame_id, store]), "ERROR: Frame id does not exist");
-
     const search_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     };
-
+    
     //return the frame that matches the id param
     const existing_frame: frame_record = match(Map.find_opt (search_key, store.frames), {
-    Some: (frame: frame_record) => frame,
-    None: () => (failwith("ERROR: Something went wrong") as frame_record)
+        Some: (frame: frame_record) => frame,
+        None: () => (failwith("ERROR: Frame id does not exist") as frame_record)
     });
 
     //toggles the value for the draft key  
     const new_frames: frames = Map.update(search_key, Some(({...existing_frame, draft: !existing_frame.draft})), store.frames);
  
     const updated_store: storage = {
-        next_frame_id: store.next_frame_id,
-        frames: new_frames,
-        users: store.users
+        ...store,
+        frames: new_frames
     };
 
     return updated_store;
@@ -122,24 +119,21 @@ const updateFrame = ([store, update_params] : [storage, update_params]) : storag
 
     const search_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     };
 
-    assert_with_error(verifyStringLength(new_frame_string), "ERROR: Frame length can not be greater than 200");
-
-    assert_with_error(verifyFrameId([frame_id, store]), "ERROR: Frame id does not exist");
+    assert_with_error(String.length(new_frame_string) > (200 as nat), "ERROR: Frame length can not be greater than 200");
 
     const existing_frame: frame_record = match(Map.find_opt (search_key, store.frames), {
-    Some: (frame: frame_record) => frame,
-    None: () => (failwith("ERROR: Something went wrong") as frame_record)
+        Some: (frame: frame_record) => frame,
+        None: () => (failwith("ERROR: Frame id does not exist") as frame_record)
     });
 
     const new_frames: frames = Map.update(search_key, Some(({...existing_frame, frame: new_frame_string})), store.frames);
  
     const updated_store: storage = {
-        next_frame_id: store.next_frame_id,
-        frames: new_frames,
-        users: store.users
+        ...store,
+        frames: new_frames
     };
 
     return updated_store;
@@ -147,25 +141,25 @@ const updateFrame = ([store, update_params] : [storage, update_params]) : storag
 
 const deconsteFrame = ([store, frame_id] : [storage, nat]) : storage => {
     
-    assert_with_error(verifyFrameId([frame_id, store]), "ERROR: Frame id does not exist");
-
     const search_key: key_ = {
         id: frame_id,
-        owner: Tezos.sender
+        owner: Tezos.get_sender()
     }
+
+    assert_with_error(verifyFrameId([search_key, store]), "ERROR: Frame id does not exist");
 
     const new_frames: frames = Map.remove(search_key, store.frames);
 
-    const updated_users: users = match(Map.find_opt (Tezos.sender, store.users), {
+    const updated_users: users = match(Map.find_opt (Tezos.get_sender(), store.users), {
         Some: (user_set: set<nat>) => {
             const updated_user_set: set<nat> = Set.remove(frame_id, user_set)
-            return Map.update(Tezos.sender, Some(updated_user_set), store.users)
+            return Map.update(Tezos.get_sender(), Some(updated_user_set), store.users)
         },
         None: () => (failwith("ERROR: Something went wrong") as users)
     });
 
     const updated_store: storage = {
-        next_frame_id: store.next_frame_id,
+        ...store,
         frames: new_frames,
         users: updated_users
     };
