@@ -57,7 +57,7 @@ const addFrame = ([store, frame] : [storage, string]) : storage => {
     assert_with_error(String.length(frame) > (200 as nat), "ERROR: Frame length can not be greater than 200");
 
     //verify if the id already exist
-    assert_with_error(!verifyFrameId([frame_key, store]), "Frame id already exists");
+    assert_with_error(!verifyFrameId([frame_key, store]), "Frame ID already exists");
 
     const new_frame: frame_record = {
         id: frame_id,
@@ -160,6 +160,37 @@ const deconsteFrame = ([store, frame_id] : [storage, nat]) : storage => {
 
     const updated_store: storage = {
         ...store,
+        frames: new_frames,
+        users: updated_users
+    };
+
+    return updated_store;
+};
+
+// 👋 THIS PART WAS MISSING
+// ERROR: Invalid type(s) Cannot unify "nat" with "key_".
+ 
+const deleteFrame = ([store, frame] : [storage, key_]) : storage => {
+    
+    assert_with_error(verifyFrameId([frame, store]), "Frame ID does not exist");
+
+    const search_key: key_ = {
+        id: frame.id,
+        owner: Tezos.get_sender()
+    }
+
+    const new_frames: frames = Map.remove(search_key, store.frames);
+
+    const updated_users: users = match(Map.find_opt (Tezos.get_sender(), store.users), {
+        Some: (user_set: set<nat>) => {
+            const updated_user_set: set<nat> = Set.remove(frame.id, user_set)
+            return Map.update(Tezos.get_sender(), Some(updated_user_set), store.users)
+        },
+        None: () => (failwith("Something went wrong, please try again") as users)
+    });
+
+    const updated_store: storage = {
+        next_frame_id: store.next_frame_id,
         frames: new_frames,
         users: updated_users
     };
