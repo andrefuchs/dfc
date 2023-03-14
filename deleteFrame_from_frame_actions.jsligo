@@ -170,21 +170,21 @@ const deconsteFrame = ([store, frame_id] : [storage, nat]) : storage => {
 // 👋 THIS PART WAS MISSING
 // ERROR: Invalid type(s) Cannot unify "nat" with "key_".
  
-const deleteFrame = ([store, frame_id] : [storage, nat]) : storage => {
+const deleteFrame = ([store, frame] : [storage, key_]) : storage => {
     
-    assert_with_error(verifyFrameId([frame_id, store]), "Frame ID does not exist");
+    assert_with_error(verifyFrameId([frame, store]), "Frame ID does not exist");
 
     const search_key: key_ = {
-        id: frame_id,
-        owner: Tezos.new
+        id: frame.id,
+        owner: Tezos.get_sender()
     }
 
     const new_frames: frames = Map.remove(search_key, store.frames);
 
-    const updated_users: users = match(Map.find_opt (Tezos.new, store.users), {
+    const updated_users: users = match(Map.find_opt (Tezos.get_sender(), store.users), {
         Some: (user_set: set<nat>) => {
-            const updated_user_set: set<nat> = Set.remove(frame_id, user_set)
-            return Map.update(Tezos.new, Some(updated_user_set), store.users)
+            const updated_user_set: set<nat> = Set.remove(frame.id, user_set)
+            return Map.update(Tezos.get_sender(), Some(updated_user_set), store.users)
         },
         None: () => (failwith("Something went wrong, please try again") as users)
     });

@@ -1,4 +1,4 @@
-#include "frame_actions.jsligo"
+#include "deleteFrame_from_frame_actions.jsligo"
 
 type parameter = ["AddFrame", string] | ["ToggleFrameStatus", nat] | ["UpdateFrame", update_params ]| ["DeconsteFrame", nat] 
 
